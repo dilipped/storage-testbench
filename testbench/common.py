@@ -266,7 +266,8 @@ def filter_response_rest(response, projection, fields):
 
 
 def parse_multipart(request):
-    content_type = request.headers.get("content-type")
+    content_type_raw = request.headers.get("content-type")
+    content_type = content_type_raw.replace("'", "")
     if content_type is None or not content_type.startswith("multipart/related"):
         testbench.error.invalid("Content-type header in multipart upload", None)
     _, _, boundary = content_type.partition("boundary=")
@@ -276,6 +277,16 @@ def parse_multipart(request):
         )
 
     body = extract_media(request)
+    if b'\r\n' not in body:
+        boundary_bytes = b'--' + boundary.encode('ascii')
+        body = body.replace(b'\n' + boundary_bytes, b'\r\n' + boundary_bytes)
+        parts = body.split(boundary_bytes)
+        parts[-1] = b'--\r\n'
+        parts[-2] = b'\r\n\r\n'.join(parts[-2].split(b'\n\n', 1))
+        parts[-3] = b'\r\n\r\n'.join(parts[-3].split(b'\n\n', 1))
+        body = boundary_bytes.join(parts)
+        # body = body.replace(b'\n', b'\r\n')
+
     try:
         decoder = MultipartDecoder(body, content_type)
     except ImproperBodyPartContentException as e:

@@ -381,7 +381,7 @@ class Object:
             testbench.error.range_not_satisfiable()
 
         headers = {}
-        content_range = "bytes %d-%d/%d" % (begin, end - 1, length)
+        content_range = "bytes %d-%d/%d" % (begin, end, length)
 
         instructions = testbench.common.extract_instruction(request, None)
         if instructions is None:
