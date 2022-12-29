@@ -309,7 +309,13 @@ class Object:
 
     @classmethod
     def rest(cls, metadata):
-        response = testbench.proto2rest.object_as_rest(metadata)
+        response = testbench.proto2rest.object_as_rest(metadata)\
+        # gcloud storage's JSON API workflow requires mediaLink field for
+        # download purposes.
+        response["mediaLink"] = (
+            'https://storage.googleapis.com/download/storage/v1/b/'
+            '{}/o/{}?generation={}&alt=media'.format(
+                response["bucket"], response["name"], response["generation"]))
         old_metadata = {}
         if "metadata" in response:
             for key, value in response["metadata"].items():
