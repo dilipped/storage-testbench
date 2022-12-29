@@ -267,6 +267,8 @@ def filter_response_rest(response, projection, fields):
 
 def parse_multipart(request):
     content_type_raw = request.headers.get("content-type")
+    # For Apitools content-type might be surrounded by single quotes
+    # e.g. boundary='value'.
     content_type = content_type_raw.replace("'", "")
     if content_type is None or not content_type.startswith("multipart/related"):
         testbench.error.invalid("Content-type header in multipart upload", None)
@@ -278,6 +280,11 @@ def parse_multipart(request):
 
     body = extract_media(request)
     if b'\r\n' not in body:
+        # Libraries like Apitools use Python's email library to create
+        # the multipart message. The library by default serializes using
+        # \n as newline char for Linux. But the MultipartDecoder below
+        # expects \r\n as the newline char as defined by MIME RFCs.
+        # Deconstruct and build the body again using \r\n as the newline char.
         boundary_bytes = b'--' + boundary.encode('ascii')
         body = body.replace(b'\n' + boundary_bytes, b'\r\n' + boundary_bytes)
         parts = body.split(boundary_bytes)
@@ -285,7 +292,6 @@ def parse_multipart(request):
         parts[-2] = b'\r\n\r\n'.join(parts[-2].split(b'\n\n', 1))
         parts[-3] = b'\r\n\r\n'.join(parts[-3].split(b'\n\n', 1))
         body = boundary_bytes.join(parts)
-        # body = body.replace(b'\n', b'\r\n')
 
     try:
         decoder = MultipartDecoder(body, content_type)
